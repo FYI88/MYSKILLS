@@ -1,0 +1,444 @@
+{
+  "groups": [
+    {
+      "id": "dom-sinks",
+      "name": "DOM sinks (XSS)",
+      "note": "Any hit is a candidate XSS sink. Read the surrounding lines: is the value static developer-authored text, or does it trace to user input / storage / URL / a peer / the server?",
+      "patterns": [
+        "innerHTML",
+        "outerHTML",
+        "insertAdjacentHTML",
+        "document\\.write",
+        "document\\.open",
+        "createContextualFragment",
+        "DOMParser",
+        "srcdoc",
+        "\\.append\\(",
+        "\\.prepend\\(",
+        "\\.before\\(",
+        "\\.after\\(",
+        "\\.replaceWith\\(",
+        "setHTML"
+      ]
+    },
+    {
+      "id": "script-execution",
+      "name": "Script execution / eval",
+      "note": "eval / new Function / string-arg timers / dynamic import are CRITICAL regardless of input source.",
+      "patterns": [
+        "eval\\(",
+        "new Function",
+        "Function\\(",
+        "setTimeout\\(\\s*['\"`]",
+        "setInterval\\(\\s*['\"`]",
+        "import\\(\\s*[^'\"`]",
+        "importScripts\\(\\s*[^'\"`]",
+        "require\\(\\s*[^'\"`]",
+        "\\.then\\(\\s*eval",
+        "window\\[['\"`][a-zA-Z]+['\"`]\\]\\s*\\("
+      ]
+    },
+    {
+      "id": "framework-sinks",
+      "name": "Framework-specific sinks",
+      "note": "Check even if the framework 'escapes by default' — these are innerHTML in a trench coat.",
+      "patterns": [
+        "dangerouslySetInnerHTML",
+        "v-html",
+        ":inner-html",
+        "\\[innerHTML\\]",
+        "bypassSecurityTrust(?:Html|Script|Url|Resource)",
+        "\\$sce\\.trustAs",
+        "InnerHTML=",
+        "insertAdjacentHTML",
+        "outerHTML="
+      ]
+    },
+    {
+      "id": "template-literals",
+      "name": "Template literals / string-built HTML",
+      "note": "innerHTML = `<div>${userValue}</div>` is the same bug as innerHTML = userValue. Hand-scan for multi-line template literals — grep misses line-wrapped strings.",
+      "patterns": [
+        "innerHTML\\s*=\\s*[`'\"]",
+        "outerHTML\\s*=\\s*[`'\"]",
+        "insertAdjacentHTML\\([^,]+,\\s*[`'\"]",
+        "\\.innerHTML\\s*\\+=",
+        "createElement\\([^)]*\\)[\\s\\S]{0,200}\\.innerHTML"
+      ]
+    },
+    {
+      "id": "attribute-url-injection",
+      "name": "Attribute / URL injection",
+      "note": "User-controlled values in href/src/action/style and javascript: URIs. CSS injection via style can exfiltrate via background: url().",
+      "patterns": [
+        "\\.href\\s*=",
+        "\\.src\\s*=",
+        "\\.action\\s*=",
+        "\\.style\\s*=",
+        "setAttribute\\(",
+        "javascript:",
+        "data:text/html",
+        "location\\s*=",
+        "location\\.href\\s*=",
+        "location\\.assign",
+        "location\\.replace",
+        "window\\.open\\(",
+        "document\\.location"
+      ]
+    },
+    {
+      "id": "untrusted-input-sources",
+      "name": "Untrusted input sources",
+      "note": "URL params, hash, referrer, and message payloads treated as trusted without validation. `.data\\s*=` is noisy — triage.",
+      "patterns": [
+        "location\\.search",
+        "location\\.hash",
+        "location\\.href",
+        "document\\.referrer",
+        "URLSearchParams",
+        "new URL\\(",
+        "getParameter",
+        "params\\.get",
+        "searchParams",
+        "postMessage",
+        "event\\.data",
+        "\\.data\\s*=",
+        "onmessage",
+        "MessageChannel",
+        "BroadcastChannel"
+      ]
+    },
+    {
+      "id": "storage-cookies",
+      "name": "Storage & cookies",
+      "note": "Sensitive data at rest; token storage; cookie flags (HttpOnly/Secure/SameSite).",
+      "patterns": [
+        "localStorage",
+        "sessionStorage",
+        "indexedDB",
+        "openDatabase",
+        "IDBDatabase",
+        "document\\.cookie",
+        "cookieStore"
+      ]
+    },
+    {
+      "id": "crypto-randomness",
+      "name": "Crypto & randomness",
+      "note": "Math.random() for anything that gates access is CRITICAL. atob/base64 as 'encryption' is a finding. 'AES', 'encrypt', 'nonce' are noisy — triage.",
+      "patterns": [
+        "crypto\\.subtle",
+        "getRandomValues",
+        "Math\\.random",
+        "crypto\\.random",
+        "PBKDF2",
+        "AES",
+        "GCM",
+        "subtle\\.encrypt",
+        "subtle\\.decrypt",
+        "\\biv\\b",
+        "nonce",
+        "deriveKey",
+        "generateKey",
+        "atob\\(",
+        "btoa\\(",
+        "Buffer\\.from",
+        "base64",
+        "encrypt",
+        "decrypt",
+        "md5",
+        "sha1"
+      ]
+    },
+    {
+      "id": "secrets-credentials",
+      "name": "Secrets & credentials",
+      "note": "Anything matching here in client-shipped code is public by definition. Also grep real key formats: sk-, AKIA, ghp_, xoxb-, AIza, -----BEGIN PRIVATE KEY-----.",
+      "patterns": [
+        "password",
+        "passwd",
+        "secret",
+        "apikey",
+        "api_key",
+        "api-key",
+        "token",
+        "credential",
+        "jwt",
+        "bearer",
+        "authorization",
+        "private\\s*key",
+        "sk-[A-Za-z0-9]",
+        "AKIA[0-9A-Z]{16}",
+        "aws_secret",
+        "client_secret",
+        "auth_token",
+        "refresh_token"
+      ]
+    },
+    {
+      "id": "network-transport",
+      "name": "Network & transport",
+      "note": "Mixed content, fetch with user input in the URL, WebSocket/EventSource usage, and SRI (integrity=/crossorigin) presence.",
+      "patterns": [
+        "fetch\\(",
+        "XMLHttpRequest",
+        "WebSocket\\(",
+        "new WebSocket",
+        "EventSource",
+        "navigator\\.sendBeacon",
+        "\\.send\\(",
+        "http://",
+        "ws://",
+        "wss://",
+        "\\.src\\s*=\\s*['\"`]http",
+        "integrity=",
+        "crossorigin"
+      ]
+    },
+    {
+      "id": "webrtc-p2p",
+      "name": "WebRTC / P2P",
+      "note": "TURN credentials hardcoded client-side are CRITICAL. Data channel messages are untrusted peer input.",
+      "patterns": [
+        "RTCPeerConnection",
+        "RTCDataChannel",
+        "iceServers",
+        "stun:",
+        "turn:",
+        "turns:",
+        "createOffer",
+        "createAnswer",
+        "setRemoteDescription",
+        "addIceCandidate",
+        "onicecandidate",
+        "peerConnection",
+        "webrtc"
+      ]
+    },
+    {
+      "id": "service-worker",
+      "name": "Service worker / workers",
+      "note": "Cache poisoning, update hijacking, importScripts of remote/variable paths, worker message validation.",
+      "patterns": [
+        "serviceWorker",
+        "navigator\\.serviceWorker",
+        "skipWaiting",
+        "clients\\.claim",
+        "caches\\.open",
+        "cache\\.addAll",
+        "importScripts",
+        "new Worker\\(",
+        "SharedWorker",
+        "CacheStorage"
+      ]
+    },
+    {
+      "id": "prototype-pollution",
+      "name": "Prototype pollution / merge sinks",
+      "note": "Recursive merges fed with untrusted JSON. 'prototype' alone is noisy — focus on merge/extend/assign/JSON.parse feeding user data.",
+      "patterns": [
+        "__proto__",
+        "prototype",
+        "Object\\.assign\\(",
+        "Object\\.merge",
+        "\\.merge\\(",
+        "\\.extend\\(",
+        "\\$\\.extend",
+        "mergeDeep",
+        "deepMerge",
+        "JSON\\.parse\\(",
+        "structuredClone",
+        "\\.defaults\\(",
+        "cloneDeep"
+      ]
+    },
+    {
+      "id": "dom-clobbering",
+      "name": "DOM clobbering",
+      "note": "Elements with id/name shadow window globals. Look for library code that reads window.<name> or checks truthiness of a name an attacker can inject.",
+      "patterns": [
+        "getElementById",
+        "getElementsByName",
+        "document\\.forms",
+        "document\\.all",
+        "window\\[",
+        "globalThis",
+        "name\\s*=\\s*['\"][a-zA-Z_]+['\"]",
+        "id\\s*=\\s*['\"][a-zA-Z_]+['\"]"
+      ]
+    },
+    {
+      "id": "file-handling",
+      "name": "File handling / uploads",
+      "note": "SVG/HTML uploads are stored XSS; blob URLs never revoked leak memory; filename handling can traverse paths.",
+      "patterns": [
+        "FileReader",
+        "input[^>]*type=[\"']file",
+        "URL\\.createObjectURL",
+        "revokeObjectURL",
+        "webkitdirectory",
+        "\\.download\\s*=",
+        "\\.files\\b",
+        "ArrayBuffer",
+        "Blob\\(",
+        "DataTransfer",
+        "accept="
+      ]
+    },
+    {
+      "id": "logging-leakage",
+      "name": "Logging / leakage",
+      "note": "console.* near sensitive data; source maps shipped to prod.",
+      "patterns": [
+        "console\\.(log|debug|info|warn|error|trace|dir)",
+        "\\bdebugger\\b",
+        "stack\\s*=",
+        "Error\\(",
+        "sourceMappingURL",
+        "# sourceMappingURL",
+        "\\.map\\b"
+      ]
+    },
+    {
+      "id": "security-headers",
+      "name": "Security headers (server config / meta)",
+      "note": "Presence is a starting point — check the actual values (strict CSP, frame-ancestors, HSTS, nosniff, Referrer-Policy, COOP/COEP).",
+      "patterns": [
+        "Content-Security-Policy",
+        "X-Frame-Options",
+        "Strict-Transport-Security",
+        "X-Content-Type-Options",
+        "Referrer-Policy",
+        "Permissions-Policy",
+        "Cross-Origin-Opener-Policy",
+        "Cross-Origin-Embedder-Policy",
+        "Access-Control-Allow-Origin",
+        "frame-ancestors",
+        "upgrade-insecure-requests"
+      ]
+    },
+    {
+      "id": "iframes-embedding",
+      "name": "Iframes / embedding",
+      "note": "Sandbox attributes, allow-same-origin+allow-scripts combinations (escape hatch), srcdoc with untrusted content.",
+      "patterns": [
+        "<iframe",
+        "sandbox=",
+        "allow-same-origin",
+        "allow-scripts",
+        "srcdoc",
+        "frameborder",
+        "allowfullscreen"
+      ]
+    },
+    {
+      "id": "electron-tauri-webview",
+      "name": "Electron / Tauri / WebView",
+      "note": "nodeIntegration:true + any XSS = RCE. 'process\\.' and 'invoke\\(' are noisy — triage against the shell config.",
+      "patterns": [
+        "nodeIntegration",
+        "contextIsolation",
+        "preload",
+        "ipcRenderer",
+        "ipcMain",
+        "shell\\.openExternal",
+        "new BrowserWindow",
+        "webPreferences",
+        "protocol\\.register",
+        "executeJavaScript",
+        "webview",
+        "allowRunningInsecureContent",
+        "sandbox:\\s*false",
+        "enableRemoteModule",
+        "nodeIntegrationInWorker",
+        "tva\\(",
+        "invoke\\(",
+        "@tauri-apps",
+        "Command<",
+        "process\\.",
+        "require\\(['\"]electron"
+      ]
+    },
+    {
+      "id": "rn-android-capacitor",
+      "name": "React Native / Android WebView / Capacitor",
+      "note": "addJavascriptInterface exposed to remote content is the classic JS-bridge RCE.",
+      "patterns": [
+        "addJavascriptInterface",
+        "setJavaScriptEnabled",
+        "evaluateJavascript",
+        "loadUrl",
+        "allowFileAccess",
+        "setAllowFileAccess",
+        "Capacitor",
+        "plugin\\.call",
+        "postMessage\\([^)]*,\\s*['\"]\\*",
+        "originWhitelist"
+      ]
+    },
+    {
+      "id": "build-env",
+      "name": "Build / env / pipeline",
+      "note": "Anything inlined at build time (VITE_*/process.env) ships to the client and is public.",
+      "patterns": [
+        "process\\.env",
+        "import\\.meta\\.env",
+        "NODE_ENV",
+        "VITE_",
+        "REACT_APP_",
+        "\\.env",
+        "sourceMappingURL",
+        "source-map",
+        "NODE_ENV\\s*=\\s*['\"]production",
+        "API_KEY\\s*=",
+        "SECRET\\s*="
+      ]
+    },
+    {
+      "id": "obfuscation-smuggled",
+      "name": "Obfuscation / smuggled code",
+      "note": "Backdoors and payloads hiding in plain sight: base64/hex blobs, eval chains, String.fromCharCode.",
+      "patterns": [
+        "atob\\(",
+        "decodeURIComponent\\(",
+        "fromCharCode",
+        "\\\\x[0-9a-f]{2}",
+        "0x[0-9a-f]{6,}",
+        "\\beval\\s*\\(",
+        "new Function",
+        "String\\.fromCharCode",
+        "\\$\\{[^}]*\\}\\s*\\)",
+        "\\beval\\s*=\\s*",
+        "Function\\(['\"`]return"
+      ]
+    },
+    {
+      "id": "server-side",
+      "name": "Server-side patterns (if a backend exists)",
+      "note": "SQL injection, template injection (SSTI), command execution, and request-param flows. Run only when a backend is in scope.",
+      "patterns": [
+        "SELECT ",
+        "INSERT INTO",
+        "UPDATE .* SET",
+        "DELETE FROM",
+        "exec\\(",
+        "spawn\\(",
+        "\\$\\.ajax",
+        "req\\.query",
+        "req\\.params",
+        "req\\.body",
+        "sqlite",
+        "knex",
+        "sequelize",
+        "typeorm",
+        "<%.*%>",
+        "\\{\\{.*\\}\\}",
+        "pug",
+        "ejs",
+        "handlebars",
+        "mustache",
+        "doT"
+      ]
+    }
+  ]
+}

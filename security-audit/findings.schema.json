@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "security-audit findings",
+  "description": "Machine-readable output of one security-audit run. Emitted with the human report (Phase 10), consumed by later runs for re-audit (Phase 8), and rendered into ready-to-file issues via issue-template.md.",
+  "type": "object",
+  "required": ["schema_version", "audit", "threat_model", "findings", "chains", "summary"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "audit": {
+      "type": "object",
+      "required": ["app", "mode", "date"],
+      "properties": {
+        "app": { "type": "string", "minLength": 1 },
+        "mode": { "enum": ["quick", "standard", "deep"] },
+        "preset": { "type": ["string", "null"] },
+        "date": { "type": "string" },
+        "tools": {
+          "type": "object",
+          "properties": {
+            "hits_json": { "type": "string" },
+            "osv_findings": { "type": "string" },
+            "grep_engine": { "enum": ["rg", "re", "manual"] },
+            "grep_truncated": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "threat_model": {
+      "type": "object",
+      "required": ["crown_jewel", "adversaries", "shared_device", "backend_in_scope"],
+      "properties": {
+        "crown_jewel": { "type": "string", "minLength": 1 },
+        "adversaries": { "type": "array", "items": { "type": "string" } },
+        "shared_device": { "type": "boolean" },
+        "backend_in_scope": { "type": "boolean" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "chains": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/chain" }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["critical", "warning", "info", "chains"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "warning": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 },
+        "chains": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "definitions": {
+    "finding": {
+      "type": "object",
+      "required": ["id", "severity", "title", "section", "status", "verified"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^SEC-\\d{3}$" },
+        "severity": { "enum": ["critical", "warning", "info"] },
+        "title": { "type": "string", "minLength": 1 },
+        "cwe": { "type": "string", "pattern": "^CWE-\\d+$" },
+        "wstg": { "type": "array", "items": { "type": "string", "pattern": "^WSTG-[A-Z]+-\\d+$" } },
+        "section": { "type": "integer", "minimum": 1, "maximum": 15 },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "issue": { "type": "string" },
+        "vulnerable": { "type": "string" },
+        "fixed": { "type": "string" },
+        "why_works": { "type": "string" },
+        "poc": { "type": "string" },
+        "verified": { "enum": ["live-browser", "static-only"] },
+        "status": { "enum": ["open", "fix-proposed", "resolved"] },
+        "chain": { "type": ["string", "null"] },
+        "references": { "type": "array", "items": { "type": "string" } }
+      },
+      "if": { "properties": { "severity": { "enum": ["critical", "warning"] } } },
+      "then": { "required": ["file", "line"] }
+    },
+    "chain": {
+      "type": "object",
+      "required": ["id", "end_severity", "components"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^CHAIN-\\d+$" },
+        "end_severity": { "enum": ["critical", "warning", "info"] },
+        "components": { "type": "array", "items": { "type": "string", "pattern": "^SEC-\\d{3}$" } },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}
