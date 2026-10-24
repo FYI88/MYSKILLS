@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Test artifacts
+*.bak
+*.cleaned.*
+
+# Nested git repositories (vendored skills must be committed as plain files)
+**/.git/

@@ -1,0 +1,62 @@
+name: Validate Skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate SKILL.md frontmatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate every skill
+        run: python scripts/validate_skills.py
+
+  catalog:
+    name: Check CATALOG.md is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Regenerate catalog and check for drift
+        run: |
+          python scripts/generate_catalog.py
+          if ! git diff --quiet -- CATALOG.md; then
+            echo "::error::CATALOG.md is out of date. Run: python scripts/generate_catalog.py"
+            git diff -- CATALOG.md
+            exit 1
+          fi
+          echo "CATALOG.md is up to date"
+
+  shellcheck:
+    name: Shell script syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check install.sh syntax
+        run: bash -n install.sh
+
+      - name: Run ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck --severity=warning install.sh
