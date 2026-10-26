@@ -1,6 +1,6 @@
 <div align="center">
 
-# MySkills
+# Skills
 ## Personal AI Agent Skills Repository
 
 **A centralized, synchronized collection of reusable AI agent skills for Claude Code, OpenCode, Codex, Pi, Hermes, and custom agent frameworks.**
